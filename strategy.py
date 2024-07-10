@@ -199,6 +199,7 @@ class Strategy(object):
             # Check if the position is active
             len_standing_position, standing_position = self.broker_account.get_positions_for_instrument(self.instrument)
             if len_standing_position <= 0:
+                self.broker_account.cancel_orders_for_instrument(self.instrument)
                 self.print_output("No standing position found in the selling zone")
                 self.print_output("Already in the selling zone so no active trade")
             else:
