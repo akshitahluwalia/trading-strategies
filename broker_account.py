@@ -1,6 +1,9 @@
 import redis
 import json
 import upstox_client
+from pytz import timezone
+from datetime import date
+import datetime
 from upstox_client.rest import ApiException
 
 class BrokerAccount(object):
@@ -156,3 +159,32 @@ class BrokerAccount(object):
             return order_id
         except ApiException as e:
             print("Exception when calling OrderApi->place_order: %s\n" % e)
+
+    def cancel_orders_for_instrument(self, instrument):
+        configuration = upstox_client.Configuration()
+        configuration.access_token = self.access_token
+        order_book = self.fetch_open_orders_for_instrument(instrument)
+        for order in order_book:
+            if order.instrument_token == instrument:
+                try:
+                    api_instance = upstox_client.OrderApi(upstox_client.ApiClient(configuration))
+                    api_response = api_instance.cancel_order(order.order_id, self.api_version)
+                    self.print_output(f"Cancelling Order {order.order_id} is {api_response.status}")
+                except Exception as e:
+                    self.print_output(f"Encountered exception while cancelling order {order.order_id}")
+
+    def fetch_open_orders_for_instrument(self, instrument):
+        order_book = self.get_orderbook_from_broker()
+        filtered_orders = []
+        for order in order_book:
+             if(order.instrument_token == instrument and order.status != "rejected" and order.status != "complete" and order.status != "cancelled" ):
+                 filtered_orders.append(order)
+        return filtered_orders
+    
+    def get_positions_for_instrument(self, instrument):
+        positions = self.get_positions_from_broker()
+        standing_positions = []
+        for position in positions:
+            if(position.instrument_token == instrument and float(position.quantity) != 0.0):
+                standing_positions.append(position)
+        return len(standing_positions), standing_positions

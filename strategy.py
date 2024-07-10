@@ -21,12 +21,6 @@ class Strategy(object):
         self.lot_size = lot_size
         self.positions = None
         self.order_book = None
-        self.open_entry_orders = None
-        self.open_exit_orders = None
-        self.fresh_run = False
-        self.price_data = None
-        self.whitelisted_trade_execution_timeslots = None
-        self.blacklisted_execution_timeslots = None
         self.data = None
         self.historical_data  = None
         self.intraday_data  = None
@@ -136,15 +130,22 @@ class Strategy(object):
         
         return self.data
     
-    def defer_execution(self, minutes=1, buffer=5):
-        now = time.time()
-        next_slot = int(now // 60 + minutes) * 60
-        sleep_duration = int(next_slot - now)
-        time.sleep(sleep_duration + buffer)
+    def defer_execution(self):
+        # 1,5
+        # now = time.time()
+        # next_slot = int(now // 60 + minutes) * 60
+        # sleep_duration = int(next_slot - now)
+        # time.sleep(sleep_duration + buffer)
+        t = datetime.datetime.utcnow()
+        sleeptime = 60 - (t.second + t.microsecond/1000000.0) + 10
+        time.sleep(sleeptime)
 
     def sync_broker_state(self):
         self.positions = self.broker_account.get_positions_from_broker()
         self.order_book = self.broker_account.get_orderbook_from_broker()
+    
+    def round_nearest(self, x, a):
+        return round(x / a) * a
 
     def run(self):
         today = date.today()
@@ -158,12 +159,59 @@ class Strategy(object):
         self.build_auxillary_signal_data()
         last_candle_df = self.data.tail(1)
         last_candle = last_candle_df.iloc[0].to_dict()
-        self.sync_broker_state()
-        print(last_candle)
+        self.print_output("Last Candle Data")
+        for k, v in last_candle.items():
+            self.print_output(f"{k} :: {v}")
 
-        if last_candle["Supertrend Direction"] == -1.0 :
-            # Supertrend Short Zone
-            pass
+        if last_candle["Supertrend Direction"] == 1.0 :
+            # Supertrend Buy Zone
+            # Cases to cover : 
+            # - If there is an existing position then exit it and cancel the stp loss order if not filled
+            # - Place Stop Loss Entry orders for next trade only after the first one is met
+            # - Output the status of the stop loss order
+
+            # Exiting standing short options positions
+            len_standing_position, standing_position = self.broker_account.get_positions_for_instrument(self.instrument)
+            if len_standing_position > 0 and standing_position[0].quantity < 0 :
+                self.broker_account.place_market_exit_order(self.instrument, abs(standing_position[0].quantity))
+                self.print_output(f"Exited positions for {self.instrument}")
+
+            # Cancelling all open orders
+            self.print_output(f"Cancelling current orders")
+            self.broker_account.cancel_orders_for_instrument(self.instrument)
+
+            # Place entry order for next price fall
+            self.print_output(f"Placing fresh entry order at {self.round_nearest(last_candle["Supertrend"],0.05) - 0.05}")
+            self.cached_entry_order = self.broker_account.place_entry_order(
+                instrument_key= self.instrument,
+                quantity= self.lot_size * self.number_of_lots,
+                price= self.round_nearest(last_candle["Supertrend"],0.05) - 0.05,
+                trigger_price= self.round_nearest(last_candle["Supertrend"],0.05)
+            )
+
         elif last_candle["Supertrend Direction"] == -1.0:
             # Supertrend Short Zone
-            pass
+            # Cases to cover :
+            # - Check if the entry order is fulfilled and/or the position is active
+            # - If yes, Place stop loss order at 1.5 times the difference between supertrend and price value 
+            # - Place target order at 3 times the loss
+
+            # Check if the position is active
+            len_standing_position, standing_position = self.broker_account.get_positions_for_instrument(self.instrument)
+            if len_standing_position <= 0:
+                self.print_output("No standing position found in the selling zone")
+                self.print_output("Already in the selling zone so no active trade")
+            else:
+                self.broker_account.cancel_orders_for_instrument(self.instrument)
+                buffer_percentage = 0.02
+                stop_loss_price = self.round_nearest(last_candle["Supertrend"] + (buffer_percentage * last_candle["Supertrend"]),0.05) 
+                self.print_output(f"Placing stop loss order at {stop_loss_price}")
+                self.broker_account.place_stop_loss_order(
+                    instrument_key= self.instrument,
+                    quantity= self.lot_size * self.number_of_lots,
+                    price= stop_loss_price + 0.05,
+                    trigger_price= stop_loss_price
+                )
+
+        else:
+            self.print_output("Invalid Supertrend Value")

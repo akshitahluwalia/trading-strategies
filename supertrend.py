@@ -46,9 +46,9 @@ def main():
     print_output("Initialization is successful and now spawning execution loop")
     run_next = True
     while run_next:
-        print_output("Strategy is executed")
+        print_output("Strategy is executed >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
         strategy.run()
-        print_output("Strategy is deferred for execution")
+        print_output("Strategy is deferred for execution >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
         strategy.defer_execution()
 
 # Run main function 
