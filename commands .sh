@@ -1,0 +1,18 @@
+cd developer/trading-strategies/ && source env/bin/activate
+
+python supertrend.py --numberoflots=1 --lotsize=15 --accesstoken="" --instrument=""
+
+
+# Call Accumulator - NSE_FO|36884
+python accumulator.py --numberoflots=2 --lotsize=15 --accesstoken="eyJ0eXAiOiJKV1QiLCJrZXlfaWQiOiJza192MS4wIiwiYWxnIjoiSFMyNTYifQ.eyJzdWIiOiIxMDQ1NzEiLCJqdGkiOiI2NjhmNTdkNzNmMTAyMDcxNDBjMjAxNTIiLCJpc011bHRpQ2xpZW50IjpmYWxzZSwiaWF0IjoxNzIwNjcwMTY3LCJpc3MiOiJ1ZGFwaS1nYXRld2F5LXNlcnZpY2UiLCJleHAiOjE3MjA3MzUyMDB9.I04NvY2XX3illxiCecyCmWfaZfQdRjdqyF3rC4BhkyQ" --instrument="NSE_FO|36884"
+# Put Accumulator
+python accumulator.py --numberoflots=2 --lotsize=15 --accesstoken="eyJ0eXAiOiJKV1QiLCJrZXlfaWQiOiJza192MS4wIiwiYWxnIjoiSFMyNTYifQ.eyJzdWIiOiIxMDQ1NzEiLCJqdGkiOiI2NjhmNTdkNzNmMTAyMDcxNDBjMjAxNTIiLCJpc011bHRpQ2xpZW50IjpmYWxzZSwiaWF0IjoxNzIwNjcwMTY3LCJpc3MiOiJ1ZGFwaS1nYXRld2F5LXNlcnZpY2UiLCJleHAiOjE3MjA3MzUyMDB9.I04NvY2XX3illxiCecyCmWfaZfQdRjdqyF3rC4BhkyQ" --instrument="NSE_FO|36983"
+
+
+
+
+
+# Call Accumulator - NSE_FO|36884
+python supertrend.py --numberoflots=1 --lotsize=15 --accesstoken="eyJ0eXAiOiJKV1QiLCJrZXlfaWQiOiJza192MS4wIiwiYWxnIjoiSFMyNTYifQ.eyJzdWIiOiIxMDQ1NzEiLCJqdGkiOiI2NjhmNTdkNzNmMTAyMDcxNDBjMjAxNTIiLCJpc011bHRpQ2xpZW50IjpmYWxzZSwiaWF0IjoxNzIwNjcwMTY3LCJpc3MiOiJ1ZGFwaS1nYXRld2F5LXNlcnZpY2UiLCJleHAiOjE3MjA3MzUyMDB9.I04NvY2XX3illxiCecyCmWfaZfQdRjdqyF3rC4BhkyQ" --instrument="NSE_FO|36963"
+# Put Accumulator
+python supertrend.py --numberoflots=1 --lotsize=15 --accesstoken="eyJ0eXAiOiJKV1QiLCJrZXlfaWQiOiJza192MS4wIiwiYWxnIjoiSFMyNTYifQ.eyJzdWIiOiIxMDQ1NzEiLCJqdGkiOiI2NjhmNTdkNzNmMTAyMDcxNDBjMjAxNTIiLCJpc011bHRpQ2xpZW50IjpmYWxzZSwiaWF0IjoxNzIwNjcwMTY3LCJpc3MiOiJ1ZGFwaS1nYXRld2F5LXNlcnZpY2UiLCJleHAiOjE3MjA3MzUyMDB9.I04NvY2XX3illxiCecyCmWfaZfQdRjdqyF3rC4BhkyQ" --instrument="NSE_FO|36968"
