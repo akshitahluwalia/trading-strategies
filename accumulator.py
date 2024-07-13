@@ -92,10 +92,10 @@ class Accumulator(object):
         self.data['Heikin Ashi - T-1 Change'] = self.data["Heikin Ashi - T Change"].shift(1).fillna(0)
         self.data['Heikin Ashi - T-2 Change'] = self.data["Heikin Ashi - T Change"].shift(2).fillna(0)
         self.data['Heikin Ashi - T-3 Change'] = self.data["Heikin Ashi - T Change"].shift(3).fillna(0)
-        self.data["Heikin Ashi - T Change - Positive"] = self.data["Heikin Ashi - T Change"] > 0
-        self.data['Heikin Ashi - T-1 Change - Positive'] = self.data['Heikin Ashi - T-1 Change'] > 0
-        self.data['Heikin Ashi - T-2 Change - Negative'] = self.data['Heikin Ashi - T-2 Change'] <= 0
-        self.data['Heikin Ashi - T-3 Change - Negative'] = self.data['Heikin Ashi - T-3 Change'] <= 0
+        self.data["Heikin Ashi - T Change - Positive"] = self.data["Heikin Ashi - T Change"] >= 0.0
+        self.data['Heikin Ashi - T-1 Change - Positive'] = self.data['Heikin Ashi - T-1 Change'] >= 0.0
+        self.data['Heikin Ashi - T-2 Change - Negative'] = self.data['Heikin Ashi - T-2 Change'] < 0.0
+        self.data['Heikin Ashi - T-3 Change - Negative'] = self.data['Heikin Ashi - T-3 Change'] < 0.0
         self.data['Heikin Ashi - Buy Signal'] = self.data["Heikin Ashi - T Change - Positive"] & self.data['Heikin Ashi - T-1 Change - Positive'] & self.data['Heikin Ashi - T-2 Change - Negative'] & self.data['Heikin Ashi - T-3 Change - Negative']
         return self.data
     
