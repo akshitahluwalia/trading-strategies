@@ -23,7 +23,7 @@ class AutoAccumulator(object):
             expiry
     ):
         self.access_token = access_token
-        self.lots = lots
+        self.lots = int(lots)
         self.option = option
         self.underlying = underlying
         self.instrument_master_path = instrument_master_path
@@ -99,9 +99,11 @@ class AutoAccumulator(object):
             self.output(f"Exception while cancelling order :: {order_id} - {e}")
     
     def build_options_master(self):
+        if self.underlying == "NSE_INDEX|Nifty Bank":
+            sub_string = "BANKNIFTY"
         options_master = self.instruments_master[
-            (self.instruments_master['tradingsymbol'].str.contains(self.underlying.upper()))
-            & (self.instruments_master['expiry'] == str(self.expiry))
+            (self.instruments_master['tradingsymbol'].str.contains(sub_string)) & 
+            (self.instruments_master['expiry'] == str(self.expiry))
         ]
         self.options_master = options_master
         self.output(f"Options master parsing successful :: {self.options_master.shape}")
@@ -152,7 +154,7 @@ class AutoAccumulator(object):
     def fetch_intraday_data(self, interval= "1minute"):
         try:
             api_instance = upstox_client.HistoryApi()
-            api_response = api_instance.get_intra_day_candle_data(self.selected_option.instrument_token, interval, self.api_version)
+            api_response = api_instance.get_intra_day_candle_data(self.selected_option.instrument_key, interval, self.api_version)
             candles = api_response.data.candles
             columns = ["Timestamp","Open","High","Low","Close","Volume","Open Interest"]
             self.intraday_data = pd.DataFrame(data=candles, columns=columns)
@@ -165,7 +167,7 @@ class AutoAccumulator(object):
     def fetch_historical_data(self, interval= "1minute", to_date= None):
         try:
             api_instance = upstox_client.HistoryApi()
-            api_response = api_instance.get_historical_candle_data(self.selected_option.instrument_token, interval, to_date, self.api_version)
+            api_response = api_instance.get_historical_candle_data(self.selected_option.instrument_key, interval, to_date, self.api_version)
             candles = api_response.data.candles
             columns = ["Timestamp","Open","High","Low","Close","Volume","Open Interest"]
             self.historical_data = pd.DataFrame(data=candles, columns=columns)
@@ -303,7 +305,8 @@ class AutoAccumulator(object):
         if self.ticks_since_underlying_refresh >= 10 or self.underlying_price is None:
             # Refresh the last traded price of the underlying every 10 mins
             underlying_quote =  self.fetch_instrument_quote(self.underlying)
-            underlying_quote_ltp = underlying_quote.last_price
+            root_key = list(underlying_quote.keys())[0]
+            underlying_quote_ltp = underlying_quote[root_key].last_price
             self.underlying_price = underlying_quote_ltp
             self.output(f"Updated {self.underlying} price :: {underlying_quote_ltp} :: Turn :: {self.ticks_since_underlying_refresh}")
             self.ticks_since_underlying_refresh = 0
@@ -332,7 +335,7 @@ class AutoAccumulator(object):
         # Todays Date for hsitorical data
         today = date.today()
         today_date_string = today.strftime("%Y-%m-%d")
-        self.output(f" Processing Price Data :: {self.selected_option.tradingsymbol} :: {self.selected_option.instrument_key} :: {self.selected_option.strike} :: {self.selected_option.option_type}")
+        self.output(f"Processing Price Data :: {self.selected_option.tradingsymbol} :: {self.selected_option.instrument_key} :: {self.selected_option.strike} :: {self.selected_option.option_type}")
         # Fetching Data for the selected option
         self.fetch_intraday_data()
         self.fetch_historical_data(to_date=today_date_string)
@@ -344,7 +347,7 @@ class AutoAccumulator(object):
         last_candle_df = self.data.tail(1)
         last_candle = last_candle_df.iloc[0].to_dict()
 
-        delay = datetime.datetime.now() - datetime.datetime.fromisoformat(last_candle["Timestamp"])
+        delay = datetime.datetime.now() - datetime.datetime.fromtimestamp(last_candle["Timestamp"].timestamp())
         self.output(f"Last Candle Timestamp to Execution Time Delay :: {delay}")
 
         for k, v in last_candle.items():
@@ -355,17 +358,17 @@ class AutoAccumulator(object):
             # Position :: Inactive
             buy_signal = last_candle["Heikin Ashi - Buy Signal"]
             if buy_signal == True:
-                self.output(f"****** Buy Signal Encountered :: Heikin Ashi - T Change - Positive :: {last_candle["Heikin Ashi - T Change - Positive"]} :: Heikin Ashi - T-1 Change - Positive :: {last_candle['Heikin Ashi - T-1 Change - Positive']} :: Heikin Ashi - T-2 Change - Negative :: {last_candle['Heikin Ashi - T-2 Change - Negative']} :: Heikin Ashi - T-3 Change - Negative :: {last_candle["'Heikin Ashi - T-3 Change - Negative'"]} ******")
+                self.output(f"****** Buy Signal Encountered :: Heikin Ashi - T Change - Positive :: {last_candle["Heikin Ashi - T Change - Positive"]} :: Heikin Ashi - T-1 Change - Positive :: {last_candle['Heikin Ashi - T-1 Change - Positive']} :: Heikin Ashi - T-2 Change - Negative :: {last_candle['Heikin Ashi - T-2 Change - Negative']} :: Heikin Ashi - T-3 Change - Negative :: {last_candle["Heikin Ashi - T-3 Change - Negative"]} ******")
                 self.place_market_order(
                     instrument= self.selected_option.instrument_token,
-                    quantity= self.lots * int(self.selected_option["lot_size"]),
+                    quantity= int(self.lots) * int(self.selected_option["lot_size"]),
                     transaction_type= "BUY"
                 )
                 stop_loss_price = self.round_nearest(last_candle["Close"] - (0.15 * last_candle["Close"]),0.05)
                 stop_loss_trigger_price = stop_loss_price + 0.05
                 self.place_stop_loss_order(
                     instrument_key= self.selected_option.instrument_token, 
-                    quantity= self.lots * int(self.selected_option["lot_size"]), 
+                    quantity= int(self.lots) * int(self.selected_option["lot_size"]), 
                     price= stop_loss_price, 
                     trigger_price= stop_loss_trigger_price,                         
                     transaction_type= "SELL"
@@ -374,7 +377,7 @@ class AutoAccumulator(object):
                 time.sleep(20)
                 self.position, self.is_position_active = self.fetch_position_from_broker(self.last_traded_option.instrument_token)
             else:
-                self.output(f"Buy Signal is not yet encountered :: Heikin Ashi - T Change - Positive :: {last_candle["Heikin Ashi - T Change - Positive"]} :: Heikin Ashi - T-1 Change - Positive :: {last_candle['Heikin Ashi - T-1 Change - Positive']} :: Heikin Ashi - T-2 Change - Negative :: {last_candle['Heikin Ashi - T-2 Change - Negative']} :: Heikin Ashi - T-3 Change - Negative :: {last_candle["'Heikin Ashi - T-3 Change - Negative'"]}")
+                self.output(f"Buy Signal is not yet encountered :: Heikin Ashi - T Change - Positive :: {last_candle["Heikin Ashi - T Change - Positive"]} :: Heikin Ashi - T-1 Change - Positive :: {last_candle['Heikin Ashi - T-1 Change - Positive']} :: Heikin Ashi - T-2 Change - Negative :: {last_candle['Heikin Ashi - T-2 Change - Negative']} :: Heikin Ashi - T-3 Change - Negative :: {last_candle["Heikin Ashi - T-3 Change - Negative"]}")
         else:
             # Position :: Active
             current_candle_change = last_candle["Heikin Ashi - T Change"]
@@ -384,7 +387,7 @@ class AutoAccumulator(object):
                 self.cancel_orders_for_instrument(self.selected_option.instrument_token)
                 self.place_market_order(
                         instrument= self.selected_option.instrument_token,
-                        quantity= self.lots * int(self.selected_option["lot_size"]),
+                        quantity= int(self.lots) * int(self.selected_option["lot_size"]),
                         transaction_type= "SELL"
                     ) 
                 self.data = None
