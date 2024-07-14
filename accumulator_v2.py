@@ -269,7 +269,7 @@ class AutoAccumulator(object):
         try:
             api_response = api_instance.place_order(body, self.api_version)
             order_id = api_response.data.order_id
-            self.print_output(f"Stop loss order {order_id} placed successfully :: {transaction_type} :: {quantity}")
+            self.output(f"Stop loss order {order_id} placed successfully :: {transaction_type} :: {quantity}")
             return order_id
         except ApiException as e:
             print("Encountered exception while placing stop loss order :: %s\n" % e)
@@ -312,7 +312,7 @@ class AutoAccumulator(object):
             self.ticks_since_underlying_refresh = 0
         else:
             self.ticks_since_underlying_refresh += 1
-            self.output(f"{self.underlying} price considered for computation :: {underlying_quote_ltp} :: Turn :: {self.ticks_since_underlying_refresh}")
+            self.output(f"{self.underlying} price considered for computation :: {self.underlying_price} :: Turn :: {self.ticks_since_underlying_refresh}")
 
         # Sync position state on every run
         if self.last_traded_option != None or self.is_position_active is True:
@@ -360,14 +360,14 @@ class AutoAccumulator(object):
             if buy_signal == True:
                 self.output(f"****** Buy Signal Encountered :: Heikin Ashi - T Change - Positive :: {last_candle["Heikin Ashi - T Change - Positive"]} :: Heikin Ashi - T-1 Change - Positive :: {last_candle['Heikin Ashi - T-1 Change - Positive']} :: Heikin Ashi - T-2 Change - Negative :: {last_candle['Heikin Ashi - T-2 Change - Negative']} :: Heikin Ashi - T-3 Change - Negative :: {last_candle["Heikin Ashi - T-3 Change - Negative"]} ******")
                 self.place_market_order(
-                    instrument= self.selected_option.instrument_token,
+                    instrument= self.selected_option.instrument_key,
                     quantity= int(self.lots) * int(self.selected_option["lot_size"]),
                     transaction_type= "BUY"
                 )
                 stop_loss_price = self.round_nearest(last_candle["Close"] - (0.15 * last_candle["Close"]),0.05)
                 stop_loss_trigger_price = stop_loss_price + 0.05
                 self.place_stop_loss_order(
-                    instrument_key= self.selected_option.instrument_token, 
+                    instrument_key= self.selected_option.instrument_key, 
                     quantity= int(self.lots) * int(self.selected_option["lot_size"]), 
                     price= stop_loss_price, 
                     trigger_price= stop_loss_trigger_price,                         
@@ -375,7 +375,7 @@ class AutoAccumulator(object):
                 )
                 self.last_traded_option = self.selected_option
                 time.sleep(20)
-                self.position, self.is_position_active = self.fetch_position_from_broker(self.last_traded_option.instrument_token)
+                self.position, self.is_position_active = self.fetch_position_from_broker(self.last_traded_option.instrument_key)
             else:
                 self.output(f"Buy Signal is not yet encountered :: Heikin Ashi - T Change - Positive :: {last_candle["Heikin Ashi - T Change - Positive"]} :: Heikin Ashi - T-1 Change - Positive :: {last_candle['Heikin Ashi - T-1 Change - Positive']} :: Heikin Ashi - T-2 Change - Negative :: {last_candle['Heikin Ashi - T-2 Change - Negative']} :: Heikin Ashi - T-3 Change - Negative :: {last_candle["Heikin Ashi - T-3 Change - Negative"]}")
         else:
@@ -383,10 +383,10 @@ class AutoAccumulator(object):
             current_candle_change = last_candle["Heikin Ashi - T Change"]
             last_candle_change = last_candle["Heikin Ashi - T-1 Change"]
             if(current_candle_change <= 0.0 and last_candle_change <=0):
-                self.output(f" ****** Exit-condition encountered :: {current_candle_change} - IsCurrentCandleNegative({current_candle_change <= 0.0}) :: {last_candle_change} - IsPreviousCandleNegative({last_candle_change <= 0.0}) ******")
-                self.cancel_orders_for_instrument(self.selected_option.instrument_token)
+                self.output(f" ****** Exit-condition encountered :: IsCurrentCandleNegative({current_candle_change <= 0.0}) - {current_candle_change}  :: IsPreviousCandleNegative({last_candle_change <= 0.0})  - {last_candle_change} ******")
+                self.cancel_orders_for_instrument(self.selected_option.instrument_key)
                 self.place_market_order(
-                        instrument= self.selected_option.instrument_token,
+                        instrument= self.selected_option.instrument_key,
                         quantity= int(self.lots) * int(self.selected_option["lot_size"]),
                         transaction_type= "SELL"
                     ) 
@@ -395,10 +395,10 @@ class AutoAccumulator(object):
                 self.intraday_data = None
                 self.position_active =  False
                 self.last_traded_option = self.selected_option
-                self.position, self.is_position_active = self.fetch_position_from_broker(self.last_traded_option.instrument_token)
+                self.position, self.is_position_active = self.fetch_position_from_broker(self.last_traded_option.instrument_key)
                 self.underlying_price = None
             else:
-                self.output(f"Exit-condition is not yet encountered :: {current_candle_change} - IsCurrentCandleNegative({current_candle_change <= 0.0}) :: {last_candle_change} - IsPreviousCandleNegative({last_candle_change <= 0.0})")
+                self.output(f"Exit-condition is not yet encountered :: IsCurrentCandleNegative({current_candle_change <= 0.0}) - {current_candle_change}  :: IsPreviousCandleNegative({last_candle_change <= 0.0})  - {last_candle_change}")
 
     def defer_execution(self, buffer= 0):
         now = time.time()
