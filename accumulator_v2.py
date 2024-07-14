@@ -301,6 +301,8 @@ class AutoAccumulator(object):
             self.output("Encountered error while placing Market order :: %s\n" % e)
 
     def run(self):
+        run_start_time = datetime.datetime.now(timezone("Asia/Kolkata"))
+        self.output(f"Run started at {run_start_time} >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 
         if self.ticks_since_underlying_refresh >= 10 or self.underlying_price is None:
             # Refresh the last traded price of the underlying every 10 mins
@@ -374,7 +376,7 @@ class AutoAccumulator(object):
                     transaction_type= "SELL"
                 )
                 self.last_traded_option = self.selected_option
-                time.sleep(20)
+                time.sleep(10)
                 self.position, self.is_position_active = self.fetch_position_from_broker(self.last_traded_option.instrument_key)
             else:
                 self.output(f"Buy Signal is not yet encountered :: Heikin Ashi - T Change - Positive :: {last_candle["Heikin Ashi - T Change - Positive"]} :: Heikin Ashi - T-1 Change - Positive :: {last_candle['Heikin Ashi - T-1 Change - Positive']} :: Heikin Ashi - T-2 Change - Negative :: {last_candle['Heikin Ashi - T-2 Change - Negative']} :: Heikin Ashi - T-3 Change - Negative :: {last_candle["Heikin Ashi - T-3 Change - Negative"]}")
@@ -400,11 +402,14 @@ class AutoAccumulator(object):
             else:
                 self.output(f"Exit-condition is not yet encountered :: IsCurrentCandleNegative({current_candle_change <= 0.0}) - {current_candle_change}  :: IsPreviousCandleNegative({last_candle_change <= 0.0})  - {last_candle_change}")
 
+        run_end_time = datetime.datetime.now(timezone("Asia/Kolkata"))
+        self.output(f"Run ended at {run_end_time} taking {run_end_time - run_start_time} seconds for execution >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+
     def defer_execution(self, buffer= 0):
         now = time.time()
         seconds = now % 60
         sleep_time = 60 - seconds + buffer
-        self.output("Execution deferred")
+        self.output(f"Deferred execution for {sleep_time} seconds.")
         time.sleep(sleep_time)
 
 def main():
