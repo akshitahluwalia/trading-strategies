@@ -4,6 +4,7 @@ import time
 import logging
 import datetime
 import argparse
+import traceback
 import pandas as pd
 import numpy as np
 import upstox_client
@@ -11,6 +12,7 @@ import pandas_ta as ta
 from datetime import date
 from pytz import timezone
 from upstox_client.rest import ApiException
+from decimal import Decimal
 
 class AutoAccumulator(object):
     def __init__(
@@ -141,6 +143,7 @@ class AutoAccumulator(object):
             logging.info(formatted_message)
 
     def round_nearest(self, x, a):
+        # TODO: ensure precision
         return round(x / a) * a
     
     def fetch_instrument_quote(self, instrument_token):
@@ -203,19 +206,19 @@ class AutoAccumulator(object):
             ha_high.iloc[i] = max(ha_open.iloc[i], ha_close.iloc[i], self.data['High'].iloc[i])
             ha_low.iloc[i] = min(ha_open.iloc[i], ha_close.iloc[i], self.data['Low'].iloc[i])
 
-        self.data["Heikin Ashi - Open"] = ha_open
+        self.data["Heikin Ashi - Open"] = ha_open.apply(lambda x: self.round_nearest(x,0.05))
         self.data["Heikin Ashi - High"] = ha_high
         self.data["Heikin Ashi - Low"] = ha_low
-        self.data["Heikin Ashi - Close"] = ha_close
-        
+        self.data["Heikin Ashi - Close"] = ha_close.apply(lambda x: self.round_nearest(x,0.05))
         return self.data
     
     def build_auxillary_signal_data(self):
         # Calculate supporting values
-        self.data["Heikin Ashi - T Change"] = self.data["Heikin Ashi - Close"] - self.data["Heikin Ashi - Open"]
-        self.data['Heikin Ashi - T-1 Change'] = self.data["Heikin Ashi - T Change"].shift(1).fillna(0)
-        self.data['Heikin Ashi - T-2 Change'] = self.data["Heikin Ashi - T Change"].shift(2).fillna(0)
-        self.data['Heikin Ashi - T-3 Change'] = self.data["Heikin Ashi - T Change"].shift(3).fillna(0)
+        price_change_heiken_ashi = (self.data["Heikin Ashi - Close"] - self.data["Heikin Ashi - Open"]).apply(lambda x: self.round_nearest(x,0.05))
+        self.data["Heikin Ashi - T Change"] = price_change_heiken_ashi
+        self.data['Heikin Ashi - T-1 Change'] = price_change_heiken_ashi.shift(1).fillna(0)
+        self.data['Heikin Ashi - T-2 Change'] = price_change_heiken_ashi.shift(2).fillna(0)
+        self.data['Heikin Ashi - T-3 Change'] = price_change_heiken_ashi.shift(3).fillna(0)
         self.data["Heikin Ashi - T Change - Positive"] = self.data["Heikin Ashi - T Change"] > 0.0
         self.data['Heikin Ashi - T-1 Change - Positive'] = self.data['Heikin Ashi - T-1 Change'] > 0.0
         self.data['Heikin Ashi - T-2 Change - Negative'] = self.data['Heikin Ashi - T-2 Change'] < 0.0
@@ -226,7 +229,10 @@ class AutoAccumulator(object):
     def build_indicator_data(self,supertrend_period= 10,supertrend_multiplier= 2):
         sti = ta.supertrend(self.data['Heikin Ashi - High'], self.data['Heikin Ashi - Low'], self.data['Heikin Ashi - Close'], length= supertrend_period, multiplier=supertrend_multiplier)
         sti.columns = ["Supertrend","Supertrend Direction","Supertrend Lowerband","Supertrend Upperband"]
-        self.data = self.data.join(sti)
+        self.data["Supertrend"] = sti["Supertrend"]
+        self.data["Supertrend Direction"] = sti["Supertrend Direction"]
+        self.data["Supertrend Lowerband"] = sti["Supertrend Lowerband"]
+        self.data["Supertrend Upperband"] = sti["Supertrend Upperband"]
         return self.data
 
     def cancel_orders_for_instrument(self, instrument):
@@ -351,18 +357,18 @@ class AutoAccumulator(object):
         last_candle_df = self.data.tail(1)
         last_candle = last_candle_df.iloc[0].to_dict()
 
-        delay = datetime.datetime.now() - datetime.datetime.fromtimestamp(last_candle["Timestamp"].timestamp())
-        self.output(f"Last Candle Timestamp to Execution Time Delay :: {delay}")
-
         for k, v in last_candle.items():
             self.output(f"{k} :: {v}")
+
+        delay = datetime.datetime.now() - datetime.datetime.fromtimestamp(last_candle["Timestamp"].timestamp())
+        self.output(f"Last Candle Timestamp to Execution Time Delay :: {delay}")
 
         # Check Entry and Exit Conditions Based on the Position Status
         if self.is_position_active == False:
             # Position :: Inactive
             buy_signal = last_candle["Heikin Ashi - Buy Signal"]
             if buy_signal == True:
-                self.output(f"****** Buy Signal Encountered :: Heikin Ashi - T Change - Positive :: {last_candle["Heikin Ashi - T Change - Positive"]} :: Heikin Ashi - T-1 Change - Positive :: {last_candle['Heikin Ashi - T-1 Change - Positive']} :: Heikin Ashi - T-2 Change - Negative :: {last_candle['Heikin Ashi - T-2 Change - Negative']} :: Heikin Ashi - T-3 Change - Negative :: {last_candle["Heikin Ashi - T-3 Change - Negative"]} ******")
+                self.output(f"****** Buy Signal Encountered | Placing Orders ******")
                 self.place_market_order(
                     instrument= self.selected_option.instrument_key,
                     quantity= int(self.lots) * int(self.selected_option["lot_size"]),
@@ -381,13 +387,13 @@ class AutoAccumulator(object):
                 time.sleep(10)
                 self.position, self.is_position_active = self.fetch_position_from_broker(self.last_traded_option.instrument_key)
             else:
-                self.output(f"Buy Signal is not yet encountered :: Heikin Ashi - T Change - Positive :: {last_candle["Heikin Ashi - T Change - Positive"]} :: Heikin Ashi - T-1 Change - Positive :: {last_candle['Heikin Ashi - T-1 Change - Positive']} :: Heikin Ashi - T-2 Change - Negative :: {last_candle['Heikin Ashi - T-2 Change - Negative']} :: Heikin Ashi - T-3 Change - Negative :: {last_candle["Heikin Ashi - T-3 Change - Negative"]}")
+                self.output(f"Buy Signal is not yet encountered")
         else:
             # Position :: Active
             current_candle_change = last_candle["Heikin Ashi - T Change"]
             last_candle_change = last_candle["Heikin Ashi - T-1 Change"]
             if(current_candle_change <= 0.0 and last_candle_change <=0):
-                self.output(f" ****** Exit-condition encountered :: IsCurrentCandleNegative({current_candle_change <= 0.0}) - {current_candle_change}  :: IsPreviousCandleNegative({last_candle_change <= 0.0})  - {last_candle_change} ******")
+                self.output(f" ****** Exit-condition encountered :: CurrentCandleNegative({current_candle_change < 0.0}) = {current_candle_change}  :: PreviousCandleNegative({last_candle_change < 0.0})  = {last_candle_change} ******")
                 self.cancel_orders_for_instrument(self.selected_option.instrument_key)
                 self.place_market_order(
                         instrument= self.selected_option.instrument_key,
@@ -402,10 +408,10 @@ class AutoAccumulator(object):
                 self.position, self.is_position_active = self.fetch_position_from_broker(self.last_traded_option.instrument_key)
                 self.underlying_price = None
             else:
-                self.output(f"Exit-condition is not yet encountered :: IsCurrentCandleNegative({current_candle_change <= 0.0}) - {current_candle_change}  :: IsPreviousCandleNegative({last_candle_change <= 0.0})  - {last_candle_change}")
+                self.output(f"Exit-condition is not yet encountered :: CurrentCandleNegative({current_candle_change < 0.0}) = {current_candle_change}  :: PreviousCandleNegative({last_candle_change < 0.0})  = {last_candle_change}")
 
         run_end_time = datetime.datetime.now(timezone("Asia/Kolkata"))
-        self.output(f"Run ended at {run_end_time} taking {run_end_time - run_start_time} seconds for execution >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n")
+        self.output(f"Run ended at {run_end_time} taking {run_end_time - run_start_time} seconds for execution \n\n")
 
     def defer_execution(self, buffer= 0):
         now = time.time()
@@ -443,5 +449,5 @@ def main():
             auto_accumulator.defer_execution(buffer=15)
         except Exception as e:
             auto_accumulator.output(f"******** EXCEPTION ENCOUNTERED WHILE RUNNING  *******\n{e}")
-
+            traceback.print_exc()
 main()
