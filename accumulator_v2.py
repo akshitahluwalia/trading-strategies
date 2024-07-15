@@ -219,8 +219,8 @@ class AutoAccumulator(object):
         self.data['Heikin Ashi - T-1 Change'] = price_change_heiken_ashi.shift(1).fillna(0)
         self.data['Heikin Ashi - T-2 Change'] = price_change_heiken_ashi.shift(2).fillna(0)
         self.data['Heikin Ashi - T-3 Change'] = price_change_heiken_ashi.shift(3).fillna(0)
-        self.data["Heikin Ashi - T Change - Positive"] = self.data["Heikin Ashi - T Change"] > 0.0
-        self.data['Heikin Ashi - T-1 Change - Positive'] = self.data['Heikin Ashi - T-1 Change'] > 0.0
+        self.data["Heikin Ashi - T Change - Positive"] = self.data["Heikin Ashi - T Change"] >= 0.0
+        self.data['Heikin Ashi - T-1 Change - Positive'] = self.data['Heikin Ashi - T-1 Change'] >= 0.0
         self.data['Heikin Ashi - T-2 Change - Negative'] = self.data['Heikin Ashi - T-2 Change'] < 0.0
         self.data['Heikin Ashi - T-3 Change - Negative'] = self.data['Heikin Ashi - T-3 Change'] < 0.0
         self.data['Heikin Ashi - Buy Signal'] = self.data["Heikin Ashi - T Change - Positive"] & self.data['Heikin Ashi - T-1 Change - Positive'] & self.data['Heikin Ashi - T-2 Change - Negative'] & self.data['Heikin Ashi - T-3 Change - Negative']
@@ -330,7 +330,7 @@ class AutoAccumulator(object):
             last_traded_option_position, is_last_traded_option_position_active = self.fetch_position_from_broker(self.last_traded_option.instrument_key)
             self.position = last_traded_option_position
             self.is_position_active = is_last_traded_option_position_active
-            self.output(f"{self.last_traded_option.tradingsymbol} :: is_position_active :: {self.is_position_active}")
+            self.output(f"Position Status :: {self.last_traded_option.tradingsymbol} :: IsPositionActive :: {self.is_position_active}")
         
         if self.is_position_active == False:
             # Position :: Inactive, Select the option instrument based on underlying price
@@ -393,7 +393,7 @@ class AutoAccumulator(object):
             current_candle_change = last_candle["Heikin Ashi - T Change"]
             last_candle_change = last_candle["Heikin Ashi - T-1 Change"]
             if(current_candle_change <= 0.0 and last_candle_change <=0):
-                self.output(f" ****** Exit-condition encountered :: CurrentCandleNegative({current_candle_change < 0.0}) = {current_candle_change}  :: PreviousCandleNegative({last_candle_change < 0.0})  = {last_candle_change} ******")
+                self.output(f"****** Exit-condition encountered :: CurrentCandleNegative({current_candle_change < 0.0}) = {current_candle_change}  :: PreviousCandleNegative({last_candle_change < 0.0})  = {last_candle_change} ******")
                 self.cancel_orders_for_instrument(self.selected_option.instrument_key)
                 self.place_market_order(
                         instrument= self.selected_option.instrument_key,
