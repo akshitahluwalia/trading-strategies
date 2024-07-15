@@ -101,6 +101,8 @@ class AutoAccumulator(object):
     def build_options_master(self):
         if self.underlying == "NSE_INDEX|Nifty Bank":
             sub_string = "BANKNIFTY"
+        elif self.underlying == "NSE_INDEX|Nifty 50":
+            sub_string = "NIFTY"
         options_master = self.instruments_master[
             (self.instruments_master['tradingsymbol'].str.contains(sub_string)) & 
             (self.instruments_master['expiry'] == str(self.expiry))
@@ -317,9 +319,9 @@ class AutoAccumulator(object):
             self.output(f"{self.underlying} price considered for computation :: {self.underlying_price} :: Turn :: {self.ticks_since_underlying_refresh}")
 
         # Sync position state on every run
-        if self.last_traded_option != None or self.is_position_active is True:
+        if self.last_traded_option is not None or self.is_position_active is True:
             self.output(f"Fetching position state for last traded option :: {self.last_traded_option.tradingsymbol}")
-            last_traded_option_position, is_last_traded_option_position_active = self.fetch_position_from_broker(self.last_traded_option.instrument_token)
+            last_traded_option_position, is_last_traded_option_position_active = self.fetch_position_from_broker(self.last_traded_option.instrument_key)
             self.position = last_traded_option_position
             self.is_position_active = is_last_traded_option_position_active
             self.output(f"{self.last_traded_option.tradingsymbol} :: is_position_active :: {self.is_position_active}")
@@ -436,7 +438,10 @@ def main():
     auto_accumulator.build_options_master()
     
     while True:
-        auto_accumulator.run()
-        auto_accumulator.defer_execution(buffer=15)
+        try:
+            auto_accumulator.run()
+            auto_accumulator.defer_execution(buffer=15)
+        except Exception as e:
+            auto_accumulator.output(f"******** EXCEPTION ENCOUNTERED WHILE RUNNING  *******\n{e}")
 
 main()
