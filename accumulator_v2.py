@@ -216,8 +216,8 @@ class AutoAccumulator(object):
         self.data['Heikin Ashi - T-1 Change'] = self.data["Heikin Ashi - T Change"].shift(1).fillna(0)
         self.data['Heikin Ashi - T-2 Change'] = self.data["Heikin Ashi - T Change"].shift(2).fillna(0)
         self.data['Heikin Ashi - T-3 Change'] = self.data["Heikin Ashi - T Change"].shift(3).fillna(0)
-        self.data["Heikin Ashi - T Change - Positive"] = self.data["Heikin Ashi - T Change"] >= 0.0
-        self.data['Heikin Ashi - T-1 Change - Positive'] = self.data['Heikin Ashi - T-1 Change'] >= 0.0
+        self.data["Heikin Ashi - T Change - Positive"] = self.data["Heikin Ashi - T Change"] > 0.0
+        self.data['Heikin Ashi - T-1 Change - Positive'] = self.data['Heikin Ashi - T-1 Change'] > 0.0
         self.data['Heikin Ashi - T-2 Change - Negative'] = self.data['Heikin Ashi - T-2 Change'] < 0.0
         self.data['Heikin Ashi - T-3 Change - Negative'] = self.data['Heikin Ashi - T-3 Change'] < 0.0
         self.data['Heikin Ashi - Buy Signal'] = self.data["Heikin Ashi - T Change - Positive"] & self.data['Heikin Ashi - T-1 Change - Positive'] & self.data['Heikin Ashi - T-2 Change - Negative'] & self.data['Heikin Ashi - T-3 Change - Negative']
@@ -304,7 +304,7 @@ class AutoAccumulator(object):
 
     def run(self):
         run_start_time = datetime.datetime.now(timezone("Asia/Kolkata"))
-        self.output(f"Run started at {run_start_time} >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+        self.output(f"Run started at {run_start_time}")
 
         if self.ticks_since_underlying_refresh >= 10 or self.underlying_price is None:
             # Refresh the last traded price of the underlying every 10 mins
@@ -405,7 +405,7 @@ class AutoAccumulator(object):
                 self.output(f"Exit-condition is not yet encountered :: IsCurrentCandleNegative({current_candle_change <= 0.0}) - {current_candle_change}  :: IsPreviousCandleNegative({last_candle_change <= 0.0})  - {last_candle_change}")
 
         run_end_time = datetime.datetime.now(timezone("Asia/Kolkata"))
-        self.output(f"Run ended at {run_end_time} taking {run_end_time - run_start_time} seconds for execution >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+        self.output(f"Run ended at {run_end_time} taking {run_end_time - run_start_time} seconds for execution >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n")
 
     def defer_execution(self, buffer= 0):
         now = time.time()
