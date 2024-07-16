@@ -105,8 +105,10 @@ class AutoAccumulator(object):
             sub_string = "BANKNIFTY"
         elif self.underlying == "NSE_INDEX|Nifty 50":
             sub_string = "NIFTY"
+        elif self.underlying == "NSE_INDEX|Nifty Fin Service" :
+            sub_string = "FINNIFTY"
         options_master = self.instruments_master[
-            (self.instruments_master['tradingsymbol'].str.contains(sub_string)) & 
+            (self.instruments_master['tradingsymbol'].str.startswith(sub_string)) & 
             (self.instruments_master['expiry'] == str(self.expiry))
         ]
         self.options_master = options_master
@@ -143,7 +145,6 @@ class AutoAccumulator(object):
             logging.info(formatted_message)
 
     def round_nearest(self, x, a):
-        # TODO: ensure precision
         return round(x / a) * a
     
     def fetch_instrument_quote(self, instrument_token):
@@ -312,8 +313,8 @@ class AutoAccumulator(object):
         run_start_time = datetime.datetime.now(timezone("Asia/Kolkata"))
         self.output(f"Run started at {run_start_time}")
 
-        if self.ticks_since_underlying_refresh >= 10 or self.underlying_price is None:
-            # Refresh the last traded price of the underlying every 10 mins
+        if self.ticks_since_underlying_refresh > 30 or self.underlying_price is None:
+            # Refresh the last traded price of the underlying every 60 mins
             underlying_quote =  self.fetch_instrument_quote(self.underlying)
             root_key = list(underlying_quote.keys())[0]
             underlying_quote_ltp = underlying_quote[root_key].last_price
@@ -446,7 +447,7 @@ def main():
     while True:
         try:
             auto_accumulator.run()
-            auto_accumulator.defer_execution(buffer=15)
+            auto_accumulator.defer_execution(buffer=25)
         except Exception as e:
             auto_accumulator.output(f"******** EXCEPTION ENCOUNTERED WHILE RUNNING  *******\n{e}")
             traceback.print_exc()
